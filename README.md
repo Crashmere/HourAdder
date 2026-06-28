@@ -26,11 +26,35 @@ artifacts/win-x64/
 
 ## Run On Windows
 
-Run with no arguments to list installed games and select one interactively:
+### Interactive Mode
+
+Run with no arguments to scan Steam libraries, list installed games, and choose one interactively:
 
 ```powershell
 .\HourAdder.exe
 ```
+
+The prompt accepts several kinds of input:
+
+- Enter the list number to start the game shown on that row.
+- Enter a Steam AppID to start that installed game directly.
+- Enter search text to filter the visible list by game name, AppID, or install path.
+- Enter `q` or `quit` to exit without starting anything.
+
+Example flow:
+
+```text
+  1. Counter-Strike 2 [730]
+  2. DEATH STRANDING 2: ON THE BEACH [3280350]
+
+Select by number/AppID, type search text, or q to quit: death
+
+  1. DEATH STRANDING 2: ON THE BEACH [3280350]
+
+Select by number/AppID, type search text, or q to quit: 1
+```
+
+### Search And List
 
 List installed games without starting idling:
 
@@ -38,18 +62,29 @@ List installed games without starting idling:
 .\HourAdder.exe --list
 ```
 
-Filter the installed game list:
+Filter the installed game list with `--search`:
 
 ```powershell
 .\HourAdder.exe --list --search "death stranding"
+```
+
+Start interactive mode with an initial filter:
+
+```powershell
 .\HourAdder.exe --search "3280350"
 ```
+
+Search terms are split by spaces. All terms must match somewhere in the game name, AppID, or install path.
+
+### Start By AppID
 
 Start a specific AppID and let HourAdder find `steam_api64.dll` automatically:
 
 ```powershell
 .\HourAdder.exe --app-id 3280350
 ```
+
+### Manual Overrides
 
 You can still pass `steam_api64.dll` manually when auto-discovery fails:
 
