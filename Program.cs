@@ -1,4 +1,6 @@
-﻿internal static class Program
+﻿using System.Diagnostics;
+
+internal static class Program
 {
     private static async Task<int> Main(string[] args)
     {
@@ -236,16 +238,26 @@
             Directory.SetCurrentDirectory(appIdDirectory);
             await File.WriteAllTextAsync(appIdFilePath, appId.ToString());
 
+            var gameLabel = selectedGame?.Name ?? $"AppID {appId}";
+
             Console.WriteLine("HourAdder");
+            Console.WriteLine($"Game: {gameLabel}");
+            Console.WriteLine($"AppID: {appId}");
             if (selectedGame is not null)
             {
-                Console.WriteLine($"Game: {selectedGame.Name}");
                 Console.WriteLine($"Install directory: {selectedGame.InstallDirectory}");
             }
 
-            Console.WriteLine($"AppID: {appId}");
             Console.WriteLine($"steam_api64.dll: {steamApiPath}");
+
+            var status = SteamDiscovery.ReadSteamStatus();
+            if (!string.IsNullOrWhiteSpace(status.AccountName))
+            {
+                Console.WriteLine($"Steam account: {status.AccountName}");
+            }
+
             Console.WriteLine();
+            WarnIfSteamNotReady(status);
             Console.WriteLine("Initializing Steamworks...");
 
             var initResult = SteamworksNative.Initialize(steamApiPath);
@@ -256,10 +268,10 @@
                 return 1;
             }
 
-            Console.WriteLine("Steamworks initialized successfully.");
-            Console.WriteLine($"Initialization method: {initResult.Method}");
-            Console.WriteLine("Steam should now show the selected game as running.");
+            Console.WriteLine($"Steamworks initialized successfully (method: {initResult.Method}).");
+            Console.WriteLine($"Steam should now show \"{gameLabel}\" as running.");
             Console.WriteLine("Press Ctrl+C to stop.");
+            Console.WriteLine();
 
             using var stop = new CancellationTokenSource();
             Console.CancelKeyPress += (_, eventArgs) =>
@@ -268,12 +280,25 @@
                 stop.Cancel();
             };
 
+            var elapsed = Stopwatch.StartNew();
             while (!stop.IsCancellationRequested)
             {
                 SteamworksNative.RunCallbacks();
-                await Task.Delay(TimeSpan.FromSeconds(1), stop.Token);
+                UpdateIdleStatus(gameLabel, elapsed.Elapsed);
+
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(1), stop.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
 
+            elapsed.Stop();
+            FinishIdleStatus();
+            Console.WriteLine($"Stopped idling \"{gameLabel}\". Total time: {FormatElapsed(elapsed.Elapsed)}");
             return 0;
         }
         catch (DllNotFoundException ex)
@@ -319,6 +344,66 @@
         {
             // A leftover steam_appid.txt in the OS temp directory is harmless.
         }
+    }
+
+    private static void WarnIfSteamNotReady(SteamStatus status)
+    {
+        if (status.IsRunning == false)
+        {
+            Console.WriteLine("Warning: Steam does not appear to be running. Start Steam and sign in, then try again.");
+        }
+        else if (status.IsLoggedIn == false)
+        {
+            Console.WriteLine("Warning: Steam is running but no account appears to be signed in. Sign in to Steam first.");
+        }
+    }
+
+    private static void UpdateIdleStatus(string gameLabel, TimeSpan elapsed)
+    {
+        var formatted = FormatElapsed(elapsed);
+
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                Console.Title = $"HourAdder - {gameLabel} - {formatted}";
+            }
+            catch
+            {
+                // Updating the console title is best-effort.
+            }
+        }
+
+        if (Console.IsOutputRedirected)
+        {
+            return;
+        }
+
+        var text = $"Idling \"{gameLabel}\" - elapsed {formatted}";
+        try
+        {
+            var width = Math.Max(Console.WindowWidth - 1, 0);
+            Console.Write('\r' + (width > 0 ? text.PadRight(width)[..width] : text));
+        }
+        catch
+        {
+            Console.Write('\r' + text);
+        }
+    }
+
+    private static void FinishIdleStatus()
+    {
+        if (!Console.IsOutputRedirected)
+        {
+            Console.WriteLine();
+        }
+    }
+
+    private static string FormatElapsed(TimeSpan elapsed)
+    {
+        return elapsed.TotalDays >= 1
+            ? $"{(int)elapsed.TotalDays}d {elapsed.Hours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}"
+            : $"{elapsed.Hours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
     }
 
     private static bool TryParseArgs(string[] args, out Options options)

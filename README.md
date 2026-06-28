@@ -8,7 +8,9 @@ Current behavior:
 - parses Steam library folders and installed game manifests
 - lets you select an installed game from the command line
 - finds `steam_api64.dll` in the selected game directory
+- checks whether Steam is running and signed in, and shows the signed-in account
 - initializes Steamworks and keeps the process alive until `Ctrl+C`
+- shows a live elapsed-time counter while idling and the total time on exit
 
 It must be run on Windows with Steam installed and already logged in.
 
@@ -111,5 +113,32 @@ If Steam is installed in an unusual location:
 .\HourAdder.exe --steam-root "D:\Steam"
 ```
 
-Stop with `Ctrl+C`.
+### While Idling
+
+Before initializing, HourAdder reads the local Steam status and warns you if Steam is
+not running or no account is signed in. When it can be read, the signed-in Steam
+account name is shown. While idling, a live status line shows the elapsed time, and the
+console window title is updated to match:
+
+```text
+HourAdder
+Game: DEATH STRANDING 2: ON THE BEACH
+AppID: 3280350
+steam_api64.dll: C:\Program Files (x86)\Steam\steamapps\common\DEATH STRANDING 2 - ON THE BEACH\steam_api64.dll
+Steam account: your_login_name
+
+Initializing Steamworks...
+Steamworks initialized successfully (method: SteamAPI_InitSafe).
+Steam should now show "DEATH STRANDING 2: ON THE BEACH" as running.
+Press Ctrl+C to stop.
+
+Idling "DEATH STRANDING 2: ON THE BEACH" - elapsed 00:03:42
+```
+
+Press `Ctrl+C` to stop. HourAdder shuts Steamworks down cleanly and prints the total
+idle time:
+
+```text
+Stopped idling "DEATH STRANDING 2: ON THE BEACH". Total time: 00:03:42
+```
 

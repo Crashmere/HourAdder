@@ -64,6 +64,24 @@ internal static class SteamDiscovery
         }
     }
 
+    public static SteamStatus ReadSteamStatus()
+    {
+        return OperatingSystem.IsWindows() ? ReadSteamStatusWindows() : SteamStatus.Unknown;
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static SteamStatus ReadSteamStatusWindows()
+    {
+        var pid = ReadRegistryInt(@"HKEY_CURRENT_USER\SOFTWARE\Valve\Steam\ActiveProcess", "pid");
+        var activeUser = ReadRegistryInt(@"HKEY_CURRENT_USER\SOFTWARE\Valve\Steam\ActiveProcess", "ActiveUser");
+        var account = ReadRegistryString(@"HKEY_CURRENT_USER\SOFTWARE\Valve\Steam", "AutoLoginUser");
+
+        return new SteamStatus(
+            pid is null ? null : pid > 0,
+            activeUser is null ? null : activeUser > 0,
+            string.IsNullOrWhiteSpace(account) ? null : account);
+    }
+
     private static string? ResolveSteamRoot(string? steamRootOverride)
     {
         if (!string.IsNullOrWhiteSpace(steamRootOverride))
@@ -97,6 +115,24 @@ internal static class SteamDiscovery
         try
         {
             return Registry.GetValue(keyName, valueName, null) as string;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static int? ReadRegistryInt(string keyName, string valueName)
+    {
+        try
+        {
+            return Registry.GetValue(keyName, valueName, null) switch
+            {
+                int value => value,
+                long value => unchecked((int)value),
+                _ => null
+            };
         }
         catch
         {
@@ -248,6 +284,11 @@ internal sealed record SteamDiscoveryResult(
 }
 
 internal sealed record SteamLibrary(string RootDirectory, string SteamAppsDirectory);
+
+internal sealed record SteamStatus(bool? IsRunning, bool? IsLoggedIn, string? AccountName)
+{
+    public static SteamStatus Unknown { get; } = new(null, null, null);
+}
 
 internal sealed record SteamGame(
     uint AppId,
