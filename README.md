@@ -1,13 +1,14 @@
 # HourAdder
 
-Minimal Steamworks API validation prototype.
+HourAdder is a small Windows CLI tool for idling one locally logged-in Steam account.
 
-This prototype is intentionally small:
+Current behavior:
 
-- accepts one Steam AppID
-- loads an external `steam_api64.dll`
-- calls `SteamAPI_Init`
-- keeps the process alive until `Ctrl+C`
+- discovers the local Steam installation
+- parses Steam library folders and installed game manifests
+- lets you select an installed game from the command line
+- finds `steam_api64.dll` in the selected game directory
+- initializes Steamworks and keeps the process alive until `Ctrl+C`
 
 It must be run on Windows with Steam installed and already logged in.
 
@@ -25,10 +26,34 @@ artifacts/win-x64/
 
 ## Run On Windows
 
-Find a game installation directory that contains `steam_api64.dll`, then run:
+Run with no arguments to list installed games and select one interactively:
+
+```powershell
+.\HourAdder.exe
+```
+
+List installed games without starting idling:
+
+```powershell
+.\HourAdder.exe --list
+```
+
+Start a specific AppID and let HourAdder find `steam_api64.dll` automatically:
+
+```powershell
+.\HourAdder.exe --app-id 3280350
+```
+
+You can still pass `steam_api64.dll` manually when auto-discovery fails:
 
 ```powershell
 .\HourAdder.exe --app-id 730 --steam-api "C:\Program Files (x86)\Steam\steamapps\common\<Game>\steam_api64.dll"
+```
+
+If Steam is installed in an unusual location:
+
+```powershell
+.\HourAdder.exe --steam-root "D:\Steam"
 ```
 
 Stop with `Ctrl+C`.
