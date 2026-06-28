@@ -1,0 +1,33 @@
+# Build output
+bin/
+obj/
+artifacts/
+
+# Local .NET CLI state
+.dotnet_home/
+
+# IDE and editor files
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs and test output
+*.log
+TestResults/
+coverage/
+
+# Generated runtime files
+steam_appid.txt
+
+# External Steamworks binaries should not be committed
+steam_api.dll
+steam_api64.dll
+*.zip
