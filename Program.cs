@@ -24,7 +24,7 @@
         var discovery = SteamDiscovery.Discover(options.SteamRoot);
         if (options.ListOnly)
         {
-            return PrintDiscoveryResult(discovery);
+            return PrintDiscoveryResult(discovery, options.SearchQuery);
         }
 
         SteamGame? selectedGame = null;
@@ -50,7 +50,7 @@
                 return 1;
             }
 
-            selectedGame = PromptForGame(discovery.Games);
+            selectedGame = PromptForGame(discovery.Games, options.SearchQuery);
             if (selectedGame is null)
             {
                 return 1;
@@ -77,7 +77,7 @@
         return await RunSteamworksLoop(appId, selectedGame, steamApiPath);
     }
 
-    private static int PrintDiscoveryResult(SteamDiscoveryResult discovery)
+    private static int PrintDiscoveryResult(SteamDiscoveryResult discovery, string? searchQuery)
     {
         if (!discovery.Success)
         {
@@ -87,20 +87,28 @@
 
         Console.WriteLine($"Steam root: {discovery.SteamRoot}");
         Console.WriteLine($"Libraries: {discovery.Libraries.Count}");
+        var games = FilterGames(discovery.Games, searchQuery);
         Console.WriteLine($"Installed games: {discovery.Games.Count}");
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            Console.WriteLine($"Search: {searchQuery}");
+            Console.WriteLine($"Matches: {games.Count}");
+        }
+
         Console.WriteLine();
-        PrintGames(discovery.Games);
+        PrintGames(games);
         return 0;
     }
 
-    private static SteamGame? PromptForGame(IReadOnlyList<SteamGame> games)
+    private static SteamGame? PromptForGame(IReadOnlyList<SteamGame> games, string? initialSearchQuery)
     {
-        PrintGames(games);
+        var visibleGames = FilterGames(games, initialSearchQuery);
+        PrintGames(visibleGames);
         Console.WriteLine();
 
         while (true)
         {
-            Console.Write("Select a game by number or AppID (q to quit): ");
+            Console.Write("Select by number/AppID, type search text, or q to quit: ");
             var input = Console.ReadLine()?.Trim();
 
             if (string.IsNullOrWhiteSpace(input))
@@ -116,9 +124,9 @@
 
             if (int.TryParse(input, out var number) &&
                 number >= 1 &&
-                number <= games.Count)
+                number <= visibleGames.Count)
             {
-                return games[number - 1];
+                return visibleGames[number - 1];
             }
 
             if (uint.TryParse(input, out var appId))
@@ -130,9 +138,44 @@
                 }
             }
 
-            Console.WriteLine("Invalid selection.");
+            visibleGames = FilterGames(games, input);
+            if (visibleGames.Count == 0)
+            {
+                Console.WriteLine($"No games matched \"{input}\".");
+                visibleGames = games;
+            }
+            else
+            {
+                Console.WriteLine();
+                PrintGames(visibleGames);
+            }
         }
     }
+
+    private static IReadOnlyList<SteamGame> FilterGames(IReadOnlyList<SteamGame> games, string? searchQuery)
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            return games;
+        }
+
+        var terms = searchQuery
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (terms.Length == 0)
+        {
+            return games;
+        }
+
+        return games
+            .Where(game => terms.All(term => MatchesGame(game, term)))
+            .ToArray();
+    }
+
+    private static bool MatchesGame(SteamGame game, string term) =>
+        game.Name.Contains(term, StringComparison.CurrentCultureIgnoreCase) ||
+        game.AppId.ToString().Contains(term, StringComparison.OrdinalIgnoreCase) ||
+        game.InstallDirectory.Contains(term, StringComparison.CurrentCultureIgnoreCase);
 
     private static void PrintGames(IReadOnlyList<SteamGame> games)
     {
@@ -321,6 +364,16 @@
                     options.SteamRoot = args[i];
                     break;
 
+                case "-s":
+                case "--search":
+                    if (++i >= args.Length || string.IsNullOrWhiteSpace(args[i]))
+                    {
+                        return false;
+                    }
+
+                    options.SearchQuery = args[i];
+                    break;
+
                 default:
                     if (options.AppId is null && uint.TryParse(arg, out var positionalAppId))
                     {
@@ -350,6 +403,7 @@
         Console.WriteLine("  --app-id <appid>        Idle a specific installed Steam AppID.");
         Console.WriteLine("  --steam-api <path>      Use a specific steam_api64.dll.");
         Console.WriteLine("  --steam-root <path>     Use a specific Steam installation directory.");
+        Console.WriteLine("  --search <text>         Filter installed games by name, AppID, or path.");
     }
 
     private sealed class Options
@@ -357,6 +411,7 @@
         public uint? AppId { get; set; }
         public string? SteamApiPath { get; set; }
         public string? SteamRoot { get; set; }
+        public string? SearchQuery { get; set; }
         public bool ShowHelp { get; set; }
         public bool ListOnly { get; set; }
     }

@@ -38,6 +38,13 @@ List installed games without starting idling:
 .\HourAdder.exe --list
 ```
 
+Filter the installed game list:
+
+```powershell
+.\HourAdder.exe --list --search "death stranding"
+.\HourAdder.exe --search "3280350"
+```
+
 Start a specific AppID and let HourAdder find `steam_api64.dll` automatically:
 
 ```powershell
