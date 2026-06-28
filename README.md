@@ -14,15 +14,28 @@ It must be run on Windows with Steam installed and already logged in.
 
 ## Publish From macOS
 
+Publishing for a runtime ID produces a single, trimmed, compressed `HourAdder.exe`
+(about 11 MB) with the .NET runtime bundled in, so the Windows machine does not need
+.NET installed.
+
 ```bash
 DOTNET_CLI_HOME="../.dotnet_home" dotnet publish -c Release -r win-x64 --self-contained true -o artifacts/win-x64
 ```
 
-Copy the whole output directory to Windows, not only `HourAdder.exe`:
+The output is a single file:
 
 ```text
-artifacts/win-x64/
+artifacts/win-x64/HourAdder.exe
 ```
+
+Copy just that `HourAdder.exe` to Windows; no other files are required.
+
+Notes:
+
+- The single-file/trim/compression settings only activate when a runtime ID is
+  specified, so a plain `dotnet build` (without `-r`) stays offline-friendly on macOS.
+- NativeAOT would produce an even smaller native binary, but it cannot cross-compile
+  from macOS to `win-x64`, so HourAdder uses single-file plus trimming instead.
 
 ## Run On Windows
 

@@ -9,4 +9,20 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
+  <!--
+    Produce a single, trimmed, compressed executable when publishing for a specific
+    runtime (e.g. dotnet publish -r win-x64). Gating on RuntimeIdentifier keeps plain
+    'dotnet build' on macOS offline-friendly: without a RID these self-contained-only
+    settings stay off, so the SDK never tries to restore host runtime packs.
+  -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
 </Project>
