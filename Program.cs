@@ -221,15 +221,19 @@
     private static async Task<int> RunSteamworksLoop(uint appId, SteamGame? selectedGame, string steamApiPath)
     {
         var originalCurrentDirectory = Environment.CurrentDirectory;
-        var appDirectory = AppContext.BaseDirectory;
-        var appIdFilePath = Path.Combine(appDirectory, "steam_appid.txt");
 
         Environment.SetEnvironmentVariable("SteamAppId", appId.ToString());
         Environment.SetEnvironmentVariable("SteamGameId", appId.ToString());
 
+        // Steamworks reads steam_appid.txt from the current working directory. Write it into
+        // a private temporary directory and switch into it only while idling, so the file is
+        // never created next to the executable and is removed again on exit.
+        var appIdDirectory = Directory.CreateTempSubdirectory("HourAdder").FullName;
+        var appIdFilePath = Path.Combine(appIdDirectory, "steam_appid.txt");
+
         try
         {
-            Directory.SetCurrentDirectory(appDirectory);
+            Directory.SetCurrentDirectory(appIdDirectory);
             await File.WriteAllTextAsync(appIdFilePath, appId.ToString());
 
             Console.WriteLine("HourAdder");
@@ -297,23 +301,23 @@
                 // Shutdown is best-effort when initialization failed before the native library loaded.
             }
 
-            TryDeleteGeneratedAppIdFile(appIdFilePath, appId);
             Directory.SetCurrentDirectory(originalCurrentDirectory);
+            TryDeleteAppIdDirectory(appIdDirectory);
         }
     }
 
-    private static void TryDeleteGeneratedAppIdFile(string path, uint appId)
+    private static void TryDeleteAppIdDirectory(string path)
     {
         try
         {
-            if (File.Exists(path) && File.ReadAllText(path).Trim() == appId.ToString())
+            if (Directory.Exists(path))
             {
-                File.Delete(path);
+                Directory.Delete(path, recursive: true);
             }
         }
         catch
         {
-            // Leaving steam_appid.txt behind is harmless.
+            // A leftover steam_appid.txt in the OS temp directory is harmless.
         }
     }
 
